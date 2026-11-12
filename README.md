@@ -1,4 +1,5 @@
 # YouniSpin
+<img width="1024" height="500" alt="lonestar99 (1)" src="https://github.com/user-attachments/assets/b4217322-d3e2-4f1b-af04-331cd93c3e36" />
 
 YouniSpin is a local-first Android music player with a classic handheld-player
 layout, a tactile Orbit Dial, background playback, and Internet radio. It is
