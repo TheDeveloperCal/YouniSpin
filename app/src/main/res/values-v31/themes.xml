@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.YouniSpin" parent="Theme.SplashScreen">
+        <item name="android:statusBarColor">#121214</item>
+        <item name="android:navigationBarColor">#121214</item>
+        <item name="android:windowBackground">#121214</item>
+        <item name="android:windowSplashScreenBackground">@color/youni_splash_background</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/younispin_splash</item>
+        <item name="postSplashScreenTheme">@style/Theme.YouniSpin.App</item>
+    </style>
+</resources>

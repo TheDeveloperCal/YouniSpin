@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">YouniSpin</string>
+    <string name="app_subtitle">Your Music. Your Way.</string>
+    <string name="playback_channel_name">YouniSpin Playback</string>
+    <string name="playback_channel_desc">Shows active playback controls and track information</string>
+</resources>

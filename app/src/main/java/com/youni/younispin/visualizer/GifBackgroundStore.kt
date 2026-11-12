@@ -1,0 +1,181 @@
+package com.youni.younispin.visualizer
+
+import android.content.Context
+import android.graphics.BitmapFactory
+import android.net.Uri
+import android.util.Log
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
+import java.io.File
+import java.io.ByteArrayOutputStream
+import java.util.UUID
+
+data class ImportedGif(
+    val id: String,
+    val fileName: String,
+    val displayName: String,
+    val byteSize: Long,
+    val width: Int,
+    val height: Int,
+    val favorite: Boolean,
+    val warning: String? = null
+) {
+    fun file(context: Context): File = File(GifBackgroundStore.dir(context), fileName)
+}
+
+class GifBackgroundStore(private val context: Context) {
+    private val indexFile get() = File(dir(context), "index.json")
+    private val _items = MutableStateFlow(loadIndex())
+    val items: StateFlow<List<ImportedGif>> = _items.asStateFlow()
+
+    suspend fun importFromUri(uri: Uri, displayNameHint: String? = null): Result<ImportedGif> =
+        withContext(Dispatchers.IO) {
+            try {
+                val cr = context.contentResolver
+                try {
+                    cr.takePersistableUriPermission(uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                } catch (_: SecurityException) {
+                    // Copying into app storage is the durable path.
+                }
+                val mime = cr.getType(uri).orEmpty()
+                if (mime.isNotBlank() && mime != "image/gif" && !mime.contains("gif")) {
+                    return@withContext Result.failure(IllegalArgumentException("Please choose a GIF image."))
+                }
+                cr.openInputStream(uri)?.use { input ->
+                    val output = ByteArrayOutputStream()
+                    val buffer = ByteArray(16 * 1024)
+                    var total = 0
+                    while (true) {
+                        val read = input.read(buffer)
+                        if (read < 0) break
+                        total += read
+                        if (total > MAX_BYTES) {
+                            return@withContext Result.failure(
+                                IllegalArgumentException("GIF is too large. Choose a file under 12 MB.")
+                            )
+                        }
+                        output.write(buffer, 0, read)
+                    }
+                    val bytes = output.toByteArray()
+                    if (bytes.size < 16 || !isGifHeader(bytes)) {
+                        return@withContext Result.failure(IllegalArgumentException("That file is not a valid GIF."))
+                    }
+                    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                    BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+                    val w = bounds.outWidth
+                    val h = bounds.outHeight
+                    var warning: String? = null
+                    if (w > 800 || h > 800 || bytes.size > 4 * 1024 * 1024) {
+                        warning = "Large animation — it will be downsampled to protect memory on this device."
+                    }
+                    val id = UUID.randomUUID().toString()
+                    val fileName = "$id.gif"
+                    val finalFile = File(dir(context), fileName)
+                    val temporaryFile = File(dir(context), "$fileName.tmp")
+                    temporaryFile.writeBytes(bytes)
+                    if (!temporaryFile.renameTo(finalFile)) {
+                        temporaryFile.delete()
+                        return@withContext Result.failure(IllegalStateException("Could not save the selected GIF."))
+                    }
+                    val item = ImportedGif(
+                        id = id,
+                        fileName = fileName,
+                        displayName = displayNameHint?.ifBlank { null } ?: "GIF ${items.value.size + 1}",
+                        byteSize = bytes.size.toLong(),
+                        width = w.coerceAtLeast(0),
+                        height = h.coerceAtLeast(0),
+                        favorite = false,
+                        warning = warning
+                    )
+                    val next = _items.value + item
+                    persist(next)
+                    _items.value = next
+                    Result.success(item)
+                } ?: Result.failure(IllegalArgumentException("Could not open the selected GIF."))
+            } catch (e: OutOfMemoryError) {
+                Result.failure(IllegalStateException("Not enough memory to import this GIF."))
+            } catch (e: Exception) {
+                Log.e(TAG, "GIF import failed", e)
+                Result.failure(e)
+            }
+        }
+
+    fun toggleFavorite(id: String) {
+        val next = _items.value.map { if (it.id == id) it.copy(favorite = !it.favorite) else it }
+        persist(next)
+        _items.value = next
+    }
+
+    fun remove(id: String) {
+        val item = _items.value.find { it.id == id }
+        item?.file(context)?.delete()
+        val next = _items.value.filterNot { it.id == id }
+        persist(next)
+        _items.value = next
+    }
+
+    fun find(id: String?): ImportedGif? = id?.let { key -> _items.value.find { it.id == key } }
+
+    private fun loadIndex(): List<ImportedGif> {
+        dir(context)
+        if (!indexFile.exists()) return emptyList()
+        return try {
+            val arr = JSONArray(indexFile.readText())
+            buildList {
+                for (i in 0 until arr.length()) {
+                    val o = arr.getJSONObject(i)
+                    val item = ImportedGif(
+                        id = o.getString("id"),
+                        fileName = o.getString("fileName"),
+                        displayName = o.optString("displayName", "GIF"),
+                        byteSize = o.optLong("byteSize"),
+                        width = o.optInt("width"),
+                        height = o.optInt("height"),
+                        favorite = o.optBoolean("favorite"),
+                        warning = o.optString("warning").ifBlank { null }
+                    )
+                    if (item.file(context).exists()) add(item)
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not read GIF index", e)
+            emptyList()
+        }
+    }
+
+    private fun persist(items: List<ImportedGif>) {
+        val arr = JSONArray()
+        items.forEach { item ->
+            arr.put(
+                JSONObject()
+                    .put("id", item.id)
+                    .put("fileName", item.fileName)
+                    .put("displayName", item.displayName)
+                    .put("byteSize", item.byteSize)
+                    .put("width", item.width)
+                    .put("height", item.height)
+                    .put("favorite", item.favorite)
+                    .put("warning", item.warning ?: "")
+            )
+        }
+        indexFile.writeText(arr.toString())
+    }
+
+    companion object {
+        private const val TAG = "GifBackgroundStore"
+        private const val MAX_BYTES = 12 * 1024 * 1024
+        fun dir(context: Context): File =
+            File(context.filesDir, "gif_backgrounds").apply { mkdirs() }
+
+        fun isGifHeader(bytes: ByteArray): Boolean {
+            if (bytes.size < 6) return false
+            val header = bytes.copyOfRange(0, 6).toString(Charsets.US_ASCII)
+            return header == "GIF87a" || header == "GIF89a"
+        }
+    }
+}
