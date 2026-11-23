@@ -2,35 +2,33 @@
 
 ## Published APK availability
 
-There is currently no published GitHub release or downloadable APK. The
-v1.0.3 candidate is locally production-signed and must complete isolated
-emulator validation before publication. Do not install it over the existing
-BLU app: that installation uses the Android debug key, and changing signing
-identity would be rejected by Android.
+The production-signed v1.0.3 release is available on
+[GitHub](https://github.com/TheDeveloperCal/YouniSpin/releases/tag/v1.0.3).
+Download [`app-release.apk`](https://github.com/TheDeveloperCal/YouniSpin/releases/download/v1.0.3/app-release.apk).
+Its SHA-256 is
+`0216271139e673206b23bab4afe3770b9c3983d90e7a14b6549434deca7ac66d`.
+The release also includes a [checksum file](https://github.com/TheDeveloperCal/YouniSpin/releases/download/v1.0.3/YouniSpin-v1.0.3-app-release.apk.sha256).
 
-## v1.0.3 production candidate
+## v1.0.3 production release
 
-The v1.0.3 candidate uses the local production key. Its package is
+The v1.0.3 APK is signed with the YouniSpin production key. Its package is
 `com.youni.younispin`, version `1.0.3` (versionCode `4`). Install it only on a
-separate emulator or test device until its validation is complete. The BLU
-installation and its app data are intentionally left untouched.
+compatible Android 8.0 (API 26) or later device.
 
 The earlier v1.0.2 debug candidate's local music, notification, metadata
 lookup, radio playback, navigation, and GIF visualizer paths were verified on
 the BLU; see [`TEST_RESULTS.md`](TEST_RESULTS.md).
 
-The v1.0.3 isolated install and launch check has not been completed because
-there is no configured emulator or cached system image. See
-[`TEST_RESULTS.md`](TEST_RESULTS.md) for the exact status. Do not install this
-candidate on the BLU B1660V.
+To install, download the APK on the Android device, open it, and follow
+Android's installation prompt. The v1.0.3 isolated install and launch check
+could not be completed because there was no configured emulator or cached
+system image. The BLU B1660V was not used for this signing-change test; see
+[`TEST_RESULTS.md`](TEST_RESULTS.md).
 
-```bash
-adb install -r app/build/outputs/apk/debug/app-debug.apk
-adb shell monkey -p com.youni.younispin 1
-```
-
-Do not install the production-signed candidate over the debug-signed BLU app.
-Do not uninstall that app or clear its data.
+Android will reject an in-place update from a debug-signed evaluation build
+because its certificate differs. If you need to preserve data from such an
+installation, do not uninstall it; back up its app data before planning a
+migration. The BLU installation and its data were left untouched.
 
 ## Permissions
 

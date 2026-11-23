@@ -85,9 +85,9 @@ the unsigned release APK as an installable production artifact. The candidate
 has not been published. Source publication status is tracked in the repository
 history; no APK asset is attached to a GitHub release.
 
-## v1.0.3 production candidate
+## v1.0.3 published production release
 
-Date: 2026-11-23
+Date: 2026-11-22
 Package: `com.youni.younispin`
 Version name/code: `1.0.3` / `4`
 APK: `app/build/outputs/apk/release/app-release.apk`
@@ -129,10 +129,10 @@ v1.0.3 APK are therefore not confirmed.
 
 ### Publication status
 
-The APK is a production-signed candidate, but it has not been installed and
-launched in isolation. GitHub currently has no releases or tags for this
-repository; `main` is at `1b23035d57d63bab8fd26ef9298d875ec76ab327`.
-GitHub’s public API and Git transport are reachable, but the local GitHub CLI
-credential is invalid. No v1.0.3 tag, release, or uploaded APK asset has been
-created. Do not publish until the maintainer explicitly approves publication
-with the isolated-test limitation documented, or isolated testing is completed.
+Published release: <https://github.com/TheDeveloperCal/YouniSpin/releases/tag/v1.0.3>.
+Tag `v1.0.3` points to commit `3b5ee9a20c52d71d5694ca8243eb957473c59849`.
+The release includes `app-release.apk` and a SHA-256 checksum file. GitHub
+reports the APK asset SHA-256 as
+`0216271139e673206b23bab4afe3770b9c3983d90e7a14b6549434deca7ac66d`; a fresh
+download from the public release URL produced the same checksum. The release
+notes disclose that isolated installation and launch were not completed.

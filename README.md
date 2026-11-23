@@ -6,13 +6,14 @@ layout, a tactile Orbit Dial, background playback, and Internet radio. It is
 designed to keep everyday music controls focused and familiar while using
 Android's native media and accessibility facilities.
 
-> **Current candidate:** v1.0.3 (versionCode 4) is locally production-signed
-> and undergoing isolated release validation. It is not published yet; see
+> **Latest release:** [v1.0.3](https://github.com/TheDeveloperCal/YouniSpin/releases/tag/v1.0.3)
+> (versionCode 4), production-signed. Isolated emulator installation and
+> launch testing could not be completed; see
 > [known limitations](#status-and-limitations).
 
 ## Screenshots
 
-These are genuine captures from the BLU B1660V running the current candidate;
+These are genuine captures from the BLU B1660V running the v1.0.2 candidate;
 screenshots are not mockups.
 
 | Home | Full-width Library | Now Playing |
@@ -58,10 +59,10 @@ controls: [notification capture](docs/device-evidence/younispin-candidate-notifi
 
 ## Download and install
 
-There is currently **no published GitHub release or downloadable APK**. The
-v1.0.3 production-signed candidate is undergoing release validation and will
-only be published after all required checks pass. See
-[Installation](docs/INSTALLATION.md) for current signing and validation status.
+Download the [production-signed v1.0.3 APK](https://github.com/TheDeveloperCal/YouniSpin/releases/download/v1.0.3/app-release.apk)
+from the [GitHub release page](https://github.com/TheDeveloperCal/YouniSpin/releases/tag/v1.0.3).
+Its SHA-256 is `0216271139e673206b23bab4afe3770b9c3983d90e7a14b6549434deca7ac66d`.
+See [Installation](docs/INSTALLATION.md) for requirements and signing guidance.
 
 ## Build from source
 
@@ -82,12 +83,13 @@ Implementation and test status is tracked in
 [docs/FUNCTIONALITY_MATRIX.md](docs/FUNCTIONALITY_MATRIX.md), and
 [docs/TEST_RESULTS.md](docs/TEST_RESULTS.md).
 
-The v1.0.3 production-signed APK has passed automated unit tests and debug and
-release lint checks, but its isolated installation and launch have not been
-verified. No AVD or cached emulator image was available, and the BLU installation
-is being preserved. Other known gaps include TalkBack testing and several
-radio recovery, Bluetooth, and manual-station-management edge cases. Earlier
-v1.0.2 metadata and two-station radio checks were verified on the BLU; see the
+The published v1.0.3 APK passed automated unit tests, debug/release lint,
+release build, signature, package, version, and checksum checks. Its isolated
+installation and launch were not verified because no AVD or cached emulator
+image was available and the image download stalled. The BLU installation was
+preserved. Other known gaps include TalkBack testing and several radio
+recovery, Bluetooth, and manual-station-management edge cases. Earlier v1.0.2
+metadata and two-station radio checks were verified on the BLU; see the
 [test report](docs/TEST_RESULTS.md) for details.
 
 ## Contributing

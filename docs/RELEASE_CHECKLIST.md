@@ -26,15 +26,14 @@
 
 ## GitHub publication
 
-- [ ] Obtain explicit authorization to publish with the isolated-test limitation,
-  or complete isolated install/launch validation.
-- [ ] Reauthenticate the local GitHub CLI (current credential is invalid).
-- [ ] Push the reviewed candidate commit to `main`.
-- [ ] Create the GitHub release `v1.0.3` with evidence-based notes.
-- [ ] Attach the verified production APK and SHA-256 checksum file.
-- [ ] Verify the release page, tag, downloadable assets, and Actions workflow.
+- [x] Obtain explicit authorization to publish with the isolated-test limitation.
+- [x] Reauthenticate the local GitHub CLI as `TheDeveloperCal` and verify push access.
+- [x] Push commit `3b5ee9a` to `main` without force-pushing.
+- [x] Create and publish the GitHub release `v1.0.3` with evidence-based notes.
+- [x] Attach the verified production APK and SHA-256 checksum file.
+- [x] Verify the release page, tag, both assets, and public APK download checksum.
+- [ ] Verify the GitHub Actions workflow for this release.
 
-The v1.0.3 production-signed candidate and release documentation are prepared
-locally. It is not published. The isolated installation and launch check is
-incomplete, so publication is paused pending the maintainer's decision or a
-separate test environment. GitHub currently has no release or tag for v1.0.3.
+The v1.0.3 production-signed release is published. Isolated installation and
+launch remain unverified and are disclosed in the release notes. The existing
+BLU installation and data were left untouched.
