@@ -1,36 +1,19 @@
 # Installation
 
-## Latest published APK
+## Published APK availability
 
-The latest published GitHub release is v1.0.1. Download the APK and checksum
-from:
-
-https://github.com/TheDeveloperCal/YouniSpin/releases/tag/v1.0.1
-
-Verify the published APK before installation:
-
-```bash
-sha256sum --check YouniSpin-v1.0.1-debug.apk.sha256
-```
-
-Allow installation from the browser or file manager when Android prompts. The
-APK uses Android's standard debug signing key. This is an evaluation
-prerelease, not a production-signed stable release.
-
-Install with ADB:
-
-```bash
-adb install -r YouniSpin-v1.0.1-debug.apk
-adb shell monkey -p com.youni.younispin 1
-```
+There is currently no published GitHub release or downloadable APK. The
+v1.0.2 APK is a local debug-signed evaluation build, not a production release.
+Do not install an APK signed with a different key over an existing build if
+you need to preserve its app data.
 
 ## v1.0.2 evaluation build
 
-The v1.0.2 candidate is not published because it is debug-signed. Its local
-music, notification, metadata lookup, radio
-playback, navigation, and GIF visualizer paths were verified on the BLU; see
-[`TEST_RESULTS.md`](TEST_RESULTS.md). Build it from source with the commands in
-[`BUILDING.md`](BUILDING.md). Install the generated debug APK with:
+The v1.0.2 candidate is debug-signed. Its local music, notification, metadata
+lookup, radio playback, navigation, and GIF visualizer paths were verified on
+the BLU; see [`TEST_RESULTS.md`](TEST_RESULTS.md). Build it from source with
+the commands in [`BUILDING.md`](BUILDING.md). To install the generated debug
+APK over an installation signed with the matching debug key:
 
 ```bash
 adb install -r app/build/outputs/apk/debug/app-debug.apk
@@ -52,7 +35,6 @@ starts; the app can still browse local music without those network services.
 ## Production signing
 
 This repository does not contain a production keystore or signing credentials.
-The debug APK is not a Play Store-ready artifact. A maintainer must provision a
-private release key, store credentials in the release environment's secret
-manager, and configure a protected release-signing job before publishing a
-production build.
+The release variant currently assembles unsigned. A maintainer must provision
+and securely back up a private release key, configure protected signing, and
+verify update/install behavior before publishing a production build.

@@ -58,24 +58,12 @@ controls: [notification capture](docs/device-evidence/younispin-candidate-notifi
 
 ## Download and install
 
-The latest published GitHub release remains
-[v1.0.1](https://github.com/TheDeveloperCal/YouniSpin/releases/tag/v1.0.1).
-The v1.0.2 candidate is not published because production signing is not
-configured. Device verification is documented, but the debug APK is for
-evaluation only. For a source build, follow [Building](docs/BUILDING.md); APK
-details and checksum are in [`docs/TEST_RESULTS.md`](docs/TEST_RESULTS.md).
-
-For ADB installation:
-
-```bash
-adb install -r YouniSpin-v1.0.1-debug.apk
-adb shell monkey -p com.youni.younispin 1
-```
-
-Installing an APK signed by a different key over another build may require
-uninstalling the old build; uninstalling clears app data. Back up important
-playlists/settings before doing that. The debug release uses a stable
-application ID, `com.youni.younispin`.
+There is currently **no published GitHub release or downloadable APK**. The
+v1.0.2 build is a debug-signed evaluation candidate; it is not a stable
+production release. See [Installation](docs/INSTALLATION.md) for the safe
+source-build path and signing limitations. The next production version should
+be v1.0.3 (versionCode 4): local history contains the v1.0.1 tag and the
+v1.0.2 evaluation candidate (versionCode 3).
 
 ## Build from source
 

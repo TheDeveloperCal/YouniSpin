@@ -35,6 +35,7 @@
 - [ ] Attach the debug APK and SHA-256 checksum file.
 - [ ] Verify the release page, tag, downloadable assets, and Actions workflow.
 
-The candidate is not pushed or published. A stable release requires a
-production keystore, protected signing configuration, signed-APK verification,
-and completion of all release review gates.
+The v1.0.2 source candidate may be pushed for review, but it is not a release
+and no APK is published. A stable release requires production signing, signed
+APK verification, compatible install/update verification, and completion of
+all release review gates.

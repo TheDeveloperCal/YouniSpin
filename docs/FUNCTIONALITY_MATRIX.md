@@ -19,5 +19,5 @@ B1660V (Android 15/API 35), plus explicit verification limits. See
 | Bundled GIF options and live rendering | VERIFIED ON PHYSICAL DEVICE | All three supplied GIFs were seeded as choices; Simpsons Wave selection animated in full-screen Visualizer while radio remained playing. See `younispin-candidate-gif-choices.png` and `younispin-candidate-visualizer-gif.png`. |
 | GIF upload limits and storage | IMPLEMENTED | Bounded streaming import and validation are present; large/corrupt-file and low-storage failure cases were not physically tested. |
 | Unit tests, lint, debug and release APK assembly | PASS | All four Gradle tasks passed in the final source build. Release output is unsigned. |
-| Production signing and GitHub release | BLOCKED | v1.0.2 has no production signing setup and is not published. Public latest remains v1.0.1. |
+| Production signing and GitHub release | BLOCKED | v1.0.2 has no production signing setup and is not published. GitHub currently shows no published releases or tags. |
 | TalkBack, Bluetooth routing, station recovery edge cases | NOT VERIFIED IN THIS PASS | Requires separate device scenarios. |

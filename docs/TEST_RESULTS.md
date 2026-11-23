@@ -32,8 +32,8 @@ The final source build completed successfully with:
 - Certificate: Android Debug; this is not a production signing identity.
 - Release APK: `app/build/outputs/apk/release/app-release-unsigned.apk`, `29,174,170` bytes; signature verification fails because it is unsigned.
 - Release APK SHA-256: `1703eb6d3d2385229ba667fd55456b8994c083d18d68d7449896f636641d9d3f`.
-- The candidate has not been published. The existing GitHub release remains
-  v1.0.1; the v1.0.2 debug APK is retained locally for evaluation.
+- GitHub currently shows no published releases or tags. The v1.0.2 debug APK
+  is retained locally for evaluation and must not be presented as production.
 
 ### Installation and device checks
 
@@ -82,4 +82,5 @@ This artifact is **not a stable production release**. The debug APK uses the
 Android development key and the release APK is unsigned. No production
 keystore or protected signing configuration is available. Do not distribute
 the unsigned release APK as an installable production artifact. The candidate
-has not been pushed or published.
+has not been published. Source publication status is tracked in the repository
+history; no APK asset is attached to a GitHub release.

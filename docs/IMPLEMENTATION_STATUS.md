@@ -22,7 +22,7 @@ without clearing app data.
 | Radio recovery, Bluetooth routing, TalkBack, and rare import failures | NOT FULLY VERIFIED | These edge cases were outside this device pass. |
 | Unit tests, lint, and APK builds | PASS | `testDebugUnitTest`, `lintDebug`, `assembleDebug`, and `assembleRelease` completed successfully. Lint had an initial actionable indentation warning which was fixed; the subsequent full run passed, with deprecation warnings only. |
 | Production-signed release | NOT READY | Debug APK verifies with Android Debug certificate. The release APK is unsigned and fails signature verification, and no production signing credentials/configuration are present. |
-| GitHub v1.0.2 stable release | BLOCKED | No production signing configuration or key is available. The debug candidate is not published; public latest remains v1.0.1. |
+| GitHub production release | BLOCKED | GitHub currently shows no published releases or tags. The v1.0.2 debug candidate is not a production artifact; no production signing configuration or key is available. |
 
 ## Candidate artifact
 
