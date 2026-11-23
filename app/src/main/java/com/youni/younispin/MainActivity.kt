@@ -173,6 +173,50 @@ class MainActivity : ComponentActivity() {
                                     }
                                 },
                                 onNavigateToRadio = { navController.navigate(Screen.RADIO) },
+                                onOpenPlaylistManager = { navController.navigate(Screen.PLAYLISTS) },
+                                radioPanel = { onBack ->
+                                    RadioScreen(
+                                        stations = radioStations,
+                                        playbackController = playbackController,
+                                        radioRepository = radioRepo,
+                                        onPlayStation = { station ->
+                                            scope.launch {
+                                                runCatching { radioRepo.resolveStream(station) }
+                                                    .onSuccess {
+                                                        radioRepo.recordStationPlayed(station)
+                                                        playbackController.playRadioStream(it)
+                                                    }
+                                                    .onFailure {
+                                                        Toast.makeText(
+                                                            this@MainActivity,
+                                                            it.localizedMessage ?: "Unable to resolve radio stream",
+                                                            Toast.LENGTH_LONG
+                                                        ).show()
+                                                    }
+                                            }
+                                        },
+                                        onAddStation = { name, url, genre, logo, description, homepage ->
+                                            scope.launch { radioRepo.addStation(name, url, genre, logo, description, homepage) }
+                                        },
+                                        onUpdateStation = { station -> scope.launch { radioRepo.updateStation(station) } },
+                                        onDeleteStation = { station -> scope.launch { radioRepo.deleteStation(station) } },
+                                        onToggleFavorite = { station, favorite ->
+                                            scope.launch { radioRepo.setFavorite(station, favorite) }
+                                        },
+                                        onImportPlaylist = { content ->
+                                            scope.launch {
+                                                val imported = radioRepo.importM3U(content)
+                                                Toast.makeText(
+                                                    this@MainActivity,
+                                                    "Imported $imported stations",
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
+                                            }
+                                        },
+                                        onExportPlaylist = {},
+                                        onBack = onBack
+                                    )
+                                },
                                 onScanCurrentTrack = { song ->
                                     navController.navigate(
                                         Screen.metadataEditor(Uri.encode(song.path), scanOnline = true)

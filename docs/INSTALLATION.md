@@ -1,21 +1,21 @@
 # Installation
 
-## Debug/testing APK
+## Latest published APK
 
-The GitHub Release provides the v1.0.1 debug APK and a SHA-256 checksum file.
-Download both from:
+The latest published GitHub release is v1.0.1. Download the APK and checksum
+from:
 
 https://github.com/TheDeveloperCal/YouniSpin/releases/tag/v1.0.1
 
-Verify the APK before installation:
+Verify the published APK before installation:
 
 ```bash
 sha256sum --check YouniSpin-v1.0.1-debug.apk.sha256
 ```
 
 Allow installation from the browser or file manager when Android prompts. The
-APK uses Android's standard debug signing key; it is intended for evaluation,
-not production distribution.
+APK uses Android's standard debug signing key. This is an evaluation
+prerelease, not a production-signed stable release.
 
 Install with ADB:
 
@@ -24,9 +24,23 @@ adb install -r YouniSpin-v1.0.1-debug.apk
 adb shell monkey -p com.youni.younispin 1
 ```
 
-An APK signed with a different key cannot update an existing installation.
-Uninstalling first can erase application data, so export or back up user data
-before doing so.
+## v1.0.2 evaluation build
+
+The v1.0.2 candidate is not published because it is debug-signed. Its local
+music, notification, metadata lookup, radio
+playback, navigation, and GIF visualizer paths were verified on the BLU; see
+[`TEST_RESULTS.md`](TEST_RESULTS.md). Build it from source with the commands in
+[`BUILDING.md`](BUILDING.md). Install the generated debug APK with:
+
+```bash
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+adb shell monkey -p com.youni.younispin 1
+```
+
+The `-r` option updates the installed app while preserving its data when the
+signing key matches. If Android rejects an update because the APK signing key
+differs, do not uninstall if preserving app data is important; export or back
+up playlists/settings first.
 
 ## Permissions
 

@@ -2,6 +2,7 @@ package com.youni.younispin.ui.screens
 
 import android.view.HapticFeedbackConstants
 import android.text.format.DateFormat
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -172,6 +173,76 @@ fun MiniVisualizer(
     }
 }
 
+@Composable
+private fun ClassicMenuColumn(
+    items: List<ClassicMenuItem>,
+    selectedIndex: Int,
+    listState: androidx.compose.foundation.lazy.LazyListState,
+    colors: YouniColors,
+    modifier: Modifier = Modifier,
+    onSelect: (Int, ClassicMenuItem) -> Unit
+) {
+    LazyColumn(
+        state = listState,
+        modifier = modifier,
+        contentPadding = PaddingValues(vertical = 2.dp)
+    ) {
+        itemsIndexed(items) { index, item ->
+            val isSelected = index == selectedIndex
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(if (isSelected) Modifier.background(colors.selectedRowGradient) else Modifier)
+                    .clickable { onSelect(index, item) }
+                    .padding(horizontal = 10.dp, vertical = 7.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = item.title,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                            fontSize = 13.sp,
+                            color = if (isSelected) colors.selectedRowText else colors.textPrimary
+                        ),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    if (!item.subtitle.isNullOrBlank()) {
+                        Text(
+                            text = item.subtitle,
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontSize = 10.sp,
+                                color = if (isSelected) colors.selectedRowSubtext else colors.textMuted
+                            ),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+                when {
+                    item.rightText != null -> Text(
+                        text = item.rightText,
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontSize = 10.sp,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                            color = if (isSelected) colors.selectedRowText else colors.textMuted
+                        ),
+                        modifier = Modifier.padding(start = 4.dp)
+                    )
+                    item.hasSubmenu -> Icon(
+                        imageVector = Icons.Default.ChevronRight,
+                        contentDescription = null,
+                        tint = if (isSelected) colors.selectedRowText else colors.textSecondary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ClassicPlayerScreen(
@@ -187,6 +258,8 @@ fun ClassicPlayerScreen(
     onRescanLibrary: () -> Unit,
     onClearHistory: () -> Unit,
     onNavigateToRadio: () -> Unit = {},
+    radioPanel: @Composable (onBack: () -> Unit) -> Unit = {},
+    onOpenPlaylistManager: () -> Unit = {},
     onScanCurrentTrack: (Song) -> Unit = {},
     onLoadPlaylistSongs: suspend (Long) -> List<Song> = { emptyList() },
     orbitDialEnabled: Boolean = true,
@@ -241,9 +314,11 @@ fun ClassicPlayerScreen(
     val colors = YouniTheme.colors
     val animationsEnabled = appearanceSettings.animationsEnabled
 
-    // Navigation Stack
+    // Navigation Stack — destinations occupy the display; MENU toggles a temporary overlay.
     var menuStack by remember { mutableStateOf(listOf(MenuLevel.ROOT)) }
     val currentLevel = menuStack.last()
+    var navMenuOpen by remember { mutableStateOf(false) }
+    var savedSelection by remember { mutableIntStateOf(0) }
 
     // Context objects for detail screens
     var selectedAlbumId by remember { mutableLongStateOf(0L) }
@@ -255,6 +330,7 @@ fun ClassicPlayerScreen(
     // Selected item index in current menu
     var selectedIndex by remember { mutableIntStateOf(0) }
     val listState = rememberLazyListState()
+    val overlayListState = rememberLazyListState()
 
     fun triggerHapticTick() {
         if (hapticEnabled) {
@@ -267,6 +343,7 @@ fun ClassicPlayerScreen(
     }
 
     fun navigateTo(level: MenuLevel) {
+        navMenuOpen = false
         menuStack = menuStack + level
         selectedIndex = 0
         coroutineScope.launch { listState.animateScrollToItem(0) }
@@ -274,6 +351,7 @@ fun ClassicPlayerScreen(
 
     fun navigateBack() {
         if (menuStack.size > 1) {
+            navMenuOpen = false
             menuStack = menuStack.dropLast(1)
             selectedIndex = 0
             coroutineScope.launch { listState.animateScrollToItem(0) }
@@ -281,9 +359,42 @@ fun ClassicPlayerScreen(
     }
 
     fun navigateToRoot() {
+        navMenuOpen = false
         menuStack = listOf(MenuLevel.ROOT)
         selectedIndex = 0
         coroutineScope.launch { listState.animateScrollToItem(0) }
+    }
+
+    fun closeNavMenu() {
+        if (!navMenuOpen) return
+        navMenuOpen = false
+        selectedIndex = savedSelection
+    }
+
+    fun openNavMenu() {
+        if (currentLevel == MenuLevel.ROOT || navMenuOpen) return
+        savedSelection = selectedIndex
+        selectedIndex = 0
+        navMenuOpen = true
+    }
+
+    fun toggleNavMenu() {
+        if (currentLevel == MenuLevel.ROOT) return
+        if (navMenuOpen) closeNavMenu() else openNavMenu()
+    }
+
+    fun handleBack() {
+        if (navMenuOpen && currentLevel != MenuLevel.ROOT) {
+            closeNavMenu()
+            return
+        }
+        if (menuStack.size > 1) {
+            navigateBack()
+        }
+    }
+
+    BackHandler(enabled = navMenuOpen || menuStack.size > 1 || currentSong != null) {
+        handleBack()
     }
 
     // Load playlist songs when entering playlist detail
@@ -293,23 +404,29 @@ fun ClassicPlayerScreen(
         }
     }
 
+    val rootMenuItems: List<ClassicMenuItem> = remember(songs.size, playlists.size) {
+        listOf(
+            ClassicMenuItem("music", "Library", subtitle = "${songs.size} tracks", hasSubmenu = true),
+            ClassicMenuItem("playlists", "Playlists", subtitle = "${playlists.size} playlists", hasSubmenu = true),
+            ClassicMenuItem("radio", "Radio Live", hasSubmenu = true, action = {
+                navigateTo(MenuLevel.RADIO)
+            }),
+            ClassicMenuItem("visualizer_live", "Visualizer", hasSubmenu = true, action = {
+                ensureVisualizerCapture()
+                navigateTo(MenuLevel.VISUALIZER)
+            }),
+            ClassicMenuItem("settings", "Settings", hasSubmenu = true),
+            ClassicMenuItem("now_playing", "Now Playing", hasSubmenu = true)
+        )
+    }
+
     // Prepare items based on currentLevel
     val currentMenuItems: List<ClassicMenuItem> = remember(
-        currentLevel, songs, albums, artists, playlists, radioStations, folders,
+        currentLevel, rootMenuItems, songs, albums, artists, playlists, radioStations, folders,
         selectedAlbumId, selectedArtistId, selectedPlaylistId, selectedFolderPath, currentPlaylistSongs
     ) {
         when (currentLevel) {
-            MenuLevel.ROOT -> listOf(
-                ClassicMenuItem("music", "Library", subtitle = "${songs.size} tracks", hasSubmenu = true),
-                ClassicMenuItem("playlists", "Playlists", subtitle = "${playlists.size} playlists", hasSubmenu = true),
-                ClassicMenuItem("radio", "Radio Live", hasSubmenu = false, action = onNavigateToRadio),
-                ClassicMenuItem("visualizer_studio", "Visualizer", hasSubmenu = true, action = {
-                    ensureVisualizerCapture()
-                    navigateTo(MenuLevel.VISUALIZER_STUDIO)
-                }),
-                ClassicMenuItem("settings", "Settings", hasSubmenu = true),
-                ClassicMenuItem("now_playing", "Now Playing", hasSubmenu = true)
-            )
+            MenuLevel.ROOT -> rootMenuItems
 
             MenuLevel.MUSIC -> listOf(
                 ClassicMenuItem("shuffle_songs", "Shuffle Songs", hasSubmenu = false, action = {
@@ -433,7 +550,17 @@ fun ClassicPlayerScreen(
                 )
             }
 
-            MenuLevel.PLAYLISTS -> playlists.map { pl ->
+            MenuLevel.PLAYLISTS -> if (playlists.isEmpty()) {
+                listOf(
+                    ClassicMenuItem(
+                        id = "manage_playlists",
+                        title = "Create or manage playlists",
+                        subtitle = "Organize your music into collections",
+                        hasSubmenu = false,
+                        action = onOpenPlaylistManager
+                    )
+                )
+            } else playlists.map { pl ->
                 ClassicMenuItem(
                     id = pl.id.toString(),
                     title = pl.name,
@@ -523,54 +650,58 @@ fun ClassicPlayerScreen(
         }
     }
 
-    val highlightedItem = currentMenuItems.getOrNull(selectedIndex)
+    val overlayActive = navMenuOpen && currentLevel != MenuLevel.ROOT
+    val interactionItems = if (overlayActive) rootMenuItems else currentMenuItems
+    val interactionListState = if (overlayActive) overlayListState else listState
+    val highlightedItem = interactionItems.getOrNull(selectedIndex)
 
     // Handlers for click wheel gestures
     fun handleWheelClockwise() {
-        if (currentLevel == MenuLevel.NOW_PLAYING) {
+        if (currentLevel == MenuLevel.NOW_PLAYING && !overlayActive) {
             playbackController.seekTo(playbackState.currentPositionMs + 5000L)
             triggerHapticTick()
-        } else if (currentMenuItems.isNotEmpty()) {
-            if (selectedIndex < currentMenuItems.size - 1) {
+        } else if (interactionItems.isNotEmpty()) {
+            if (selectedIndex < interactionItems.size - 1) {
                 selectedIndex++
                 triggerHapticTick()
                 coroutineScope.launch {
-                    listState.animateScrollToItem(selectedIndex)
+                    interactionListState.animateScrollToItem(selectedIndex)
                 }
             }
         }
     }
 
     fun handleWheelCounterClockwise() {
-        if (currentLevel == MenuLevel.NOW_PLAYING) {
+        if (currentLevel == MenuLevel.NOW_PLAYING && !overlayActive) {
             playbackController.seekTo((playbackState.currentPositionMs - 5000L).coerceAtLeast(0L))
             triggerHapticTick()
-        } else if (currentMenuItems.isNotEmpty()) {
+        } else if (interactionItems.isNotEmpty()) {
             if (selectedIndex > 0) {
                 selectedIndex--
                 triggerHapticTick()
                 coroutineScope.launch {
-                    listState.animateScrollToItem(selectedIndex)
+                    interactionListState.animateScrollToItem(selectedIndex)
                 }
             }
         }
     }
 
     fun handleCenterNavigateUp() {
-        if (currentLevel == MenuLevel.NOW_PLAYING || selectedIndex <= 0) return
+        if ((currentLevel == MenuLevel.NOW_PLAYING && !overlayActive) || selectedIndex <= 0) return
         selectedIndex--
         triggerHapticTick()
-        coroutineScope.launch { listState.animateScrollToItem(selectedIndex) }
+        coroutineScope.launch { interactionListState.animateScrollToItem(selectedIndex) }
     }
 
     fun handleCenterNavigateDown() {
-        if (currentLevel == MenuLevel.NOW_PLAYING || selectedIndex >= currentMenuItems.lastIndex) return
+        if ((currentLevel == MenuLevel.NOW_PLAYING && !overlayActive) || selectedIndex >= interactionItems.lastIndex) return
         selectedIndex++
         triggerHapticTick()
-        coroutineScope.launch { listState.animateScrollToItem(selectedIndex) }
+        coroutineScope.launch { interactionListState.animateScrollToItem(selectedIndex) }
     }
 
     fun activateMenuItem(item: ClassicMenuItem) {
+        navMenuOpen = false
         item.action?.invoke() ?: when (item.id) {
             "music" -> navigateTo(MenuLevel.MUSIC)
             "all_songs" -> navigateTo(MenuLevel.SONGS)
@@ -594,10 +725,10 @@ fun ClassicPlayerScreen(
 
     fun handleCenterClick() {
         triggerCenterSelect()
-        if (currentLevel == MenuLevel.NOW_PLAYING) {
+        if (currentLevel == MenuLevel.NOW_PLAYING && !overlayActive) {
             playbackController.togglePlayPause()
         } else {
-            currentMenuItems.getOrNull(selectedIndex)?.let(::activateMenuItem)
+            interactionItems.getOrNull(selectedIndex)?.let(::activateMenuItem)
         }
     }
 
@@ -630,9 +761,9 @@ fun ClassicPlayerScreen(
                     .border(2.5.dp, colors.displayBorder, RoundedCornerShape(radius))
                     .clipToBounds()
             ) {
-                // Animated content transitions between menu levels
                 AnimatedContent(
                     targetState = currentLevel,
+                    modifier = Modifier.fillMaxSize(),
                     transitionSpec = {
                         if (animationsEnabled) {
                             (fadeIn(animationSpec = tween(220)) +
@@ -681,8 +812,15 @@ fun ClassicPlayerScreen(
                             Box(modifier = Modifier.fillMaxSize()) {
                                 EqualizerScreen(
                                     equalizerManager = playbackController.equalizerManager,
+                                    embedded = true,
                                     onBack = { navigateBack() }
                                 )
+                            }
+                        }
+
+                        MenuLevel.RADIO -> {
+                            Box(modifier = Modifier.fillMaxSize()) {
+                                radioPanel { navigateBack() }
                             }
                         }
 
@@ -739,7 +877,7 @@ fun ClassicPlayerScreen(
                                     onNavigateToEqualizer = { navigateTo(MenuLevel.EQUALIZER) },
                                     onNavigateToMusicFolders = { navigateTo(MenuLevel.FOLDERS) },
                                     onNavigateToPlaylists = { navigateTo(MenuLevel.PLAYLISTS) },
-                                    onNavigateToRadio = onNavigateToRadio,
+                                    onNavigateToRadio = { navigateTo(MenuLevel.RADIO) },
                                     onRescanLibrary = onRescanLibrary,
                                     onClearHistory = onClearHistory,
                                     onBack = { navigateBack() }
@@ -898,97 +1036,100 @@ fun ClassicPlayerScreen(
                                     }
                                 }
 
-                                // 2. Split Screen: Left Menu (50%) | Right Album Art (50%)
-                                Row(modifier = Modifier.fillMaxSize()) {
-
-                                    // LEFT COLUMN: Classic Menu List
-                                    Box(
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .fillMaxHeight()
-                                            .background(colors.menuBackground)
-                                    ) {
-                                        LazyColumn(
-                                            state = listState,
-                                            modifier = Modifier.fillMaxSize(),
-                                            contentPadding = PaddingValues(vertical = 2.dp)
-                                        ) {
-                                            itemsIndexed(currentMenuItems) { index, item ->
-                                                val isSelected = (index == selectedIndex)
-
-                                                val rowModifier = if (isSelected) {
-                                                    Modifier
-                                                        .fillMaxWidth()
-                                                        .background(colors.selectedRowGradient)
-                                                } else {
-                                                    Modifier.fillMaxWidth()
-                                                }
-
-                                                Row(
-                                                    modifier = rowModifier
-                                                        .clickable {
-                                                            selectedIndex = index
-                                                            triggerHapticTick()
-                                                            activateMenuItem(item)
-                                                        }
-                                                        .padding(horizontal = 10.dp, vertical = 7.dp),
-                                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                                    verticalAlignment = Alignment.CenterVertically
-                                                ) {
-                                                    Column(modifier = Modifier.weight(1f)) {
-                                                        Text(
-                                                            text = item.title,
-                                                            style = MaterialTheme.typography.bodyMedium.copy(
-                                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                                                fontSize = 13.sp,
-                                                                color = if (isSelected) colors.selectedRowText else colors.textPrimary
-                                                            ),
-                                                            maxLines = 1,
-                                                            overflow = TextOverflow.Ellipsis
-                                                        )
-                                                        if (!item.subtitle.isNullOrBlank()) {
-                                                            Text(
-                                                                text = item.subtitle,
-                                                                style = MaterialTheme.typography.labelSmall.copy(
-                                                                    fontSize = 10.sp,
-                                                                    color = if (isSelected) colors.selectedRowSubtext else colors.textMuted
-                                                                ),
-                                                                maxLines = 1,
-                                                                overflow = TextOverflow.Ellipsis
-                                                            )
-                                                        }
-                                                    }
-
-                                                    if (item.rightText != null) {
-                                                        Text(
-                                                            text = item.rightText,
-                                                            style = MaterialTheme.typography.labelSmall.copy(
-                                                                fontSize = 10.sp,
-                                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                                                color = if (isSelected) colors.selectedRowText else colors.textMuted
-                                                            ),
-                                                            modifier = Modifier.padding(start = 4.dp)
-                                                        )
-                                                    } else if (item.hasSubmenu) {
-                                                        Icon(
-                                                            imageVector = Icons.Default.ChevronRight,
-                                                            contentDescription = null,
-                                                            tint = if (isSelected) colors.selectedRowText else colors.textSecondary,
-                                                            modifier = Modifier.size(16.dp)
-                                                        )
-                                                    }
-                                                }
+                                if (targetLevel == MenuLevel.ROOT) {
+                                    Row(modifier = Modifier.fillMaxSize()) {
+                                        ClassicMenuColumn(
+                                            items = currentMenuItems,
+                                            selectedIndex = selectedIndex,
+                                            listState = listState,
+                                            colors = colors,
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .fillMaxHeight()
+                                                .background(colors.menuBackground),
+                                            onSelect = { index, item ->
+                                                selectedIndex = index
+                                                triggerHapticTick()
+                                                activateMenuItem(item)
                                             }
-                                        }
+                                        )
+                                        ClassicArtworkPreview(
+                                            playbackState = playbackState,
+                                            waveform = waveform,
+                                            modifier = Modifier.weight(1f).fillMaxHeight()
+                                        )
                                     }
-
-                                    ClassicArtworkPreview(
-                                        playbackState = playbackState,
-                                        waveform = waveform,
-                                        modifier = Modifier.weight(1f).fillMaxHeight()
+                                } else {
+                                    ClassicMenuColumn(
+                                        items = currentMenuItems,
+                                        selectedIndex = selectedIndex,
+                                        listState = listState,
+                                        colors = colors,
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .background(colors.menuBackground),
+                                        onSelect = { index, item ->
+                                            selectedIndex = index
+                                            triggerHapticTick()
+                                            activateMenuItem(item)
+                                        }
                                     )
                                 }
                             }
+                        }
+                    }
+                }
+
+                Box(modifier = Modifier.fillMaxSize()) {
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = overlayActive,
+                        enter = fadeIn(tween(180)) + slideInHorizontally(animationSpec = tween(220)) { -it / 5 },
+                        exit = fadeOut(tween(140)) + slideOutHorizontally(animationSpec = tween(180)) { -it / 5 }
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(colors.displayGlass)
+                        ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(colors.displayHeader)
+                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "MENU",
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.ExtraBold,
+                                    fontSize = 13.sp,
+                                    color = colors.accent,
+                                    letterSpacing = 1.sp
+                                )
+                            )
+                            Text(
+                                text = "Select a destination",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontSize = 10.sp,
+                                    color = colors.textSecondary
+                                )
+                            )
+                        }
+                            ClassicMenuColumn(
+                            items = rootMenuItems,
+                            selectedIndex = selectedIndex,
+                            listState = overlayListState,
+                            colors = colors,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(colors.menuBackground),
+                            onSelect = { index, item ->
+                                selectedIndex = index
+                                triggerHapticTick()
+                                activateMenuItem(item)
+                            }
+                            )
                         }
                     }
                 }
@@ -1016,7 +1157,11 @@ fun ClassicPlayerScreen(
                     onCenterNavigateDown = { handleCenterNavigateDown() },
                     onMenuClick = {
                         triggerHapticTick()
-                        navigateBack()
+                        if (currentLevel == MenuLevel.ROOT) {
+                            navigateBack()
+                        } else {
+                            toggleNavMenu()
+                        }
                     },
                     onMenuLongPress = {
                         triggerHapticTick()
@@ -1426,10 +1571,8 @@ private fun ClassicClickWheel(
                             if (!centerGesture) {
                                 val center = Offset(size.width / 2f, size.height / 2f)
                                 val currentAngleRad = atan2(change.position.y - center.y, change.position.x - center.x)
-                                val prev = lastAngleRad
-
-                                if (prev != null) {
-                                    var deltaRad = currentAngleRad - prev
+                                lastAngleRad?.let { previousAngle ->
+                                    var deltaRad = currentAngleRad - previousAngle
                                     if (deltaRad > PI) deltaRad -= (2 * PI).toFloat()
                                     if (deltaRad < -PI) deltaRad += (2 * PI).toFloat()
 

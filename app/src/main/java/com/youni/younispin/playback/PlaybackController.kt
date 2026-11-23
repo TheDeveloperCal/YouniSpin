@@ -51,7 +51,7 @@ class PlaybackController(
         onFadeVolume = { setPlayerVolume(it) }
     )
 
-    val equalizerManager = EqualizerManager(context)
+    val equalizerManager = EqualizerManager.getInstance(context)
 
     init {
         initializeController()

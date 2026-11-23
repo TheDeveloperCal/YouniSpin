@@ -162,5 +162,15 @@ class EqualizerManager(private val context: Context) {
 
     companion object {
         private const val TAG = "EqualizerManager"
+
+        @Volatile
+        private var sharedInstance: EqualizerManager? = null
+
+        fun getInstance(context: Context): EqualizerManager =
+            sharedInstance ?: synchronized(this) {
+                sharedInstance ?: EqualizerManager(context.applicationContext).also {
+                    sharedInstance = it
+                }
+            }
     }
 }

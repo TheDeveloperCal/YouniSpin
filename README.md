@@ -5,18 +5,30 @@ layout, a tactile Orbit Dial, background playback, and Internet radio. It is
 designed to keep everyday music controls focused and familiar while using
 Android's native media and accessibility facilities.
 
-> **Testing release:** v1.0.1 is a debug-signed APK for evaluation, not a
-> production Play Store build. See [known limitations](#status-and-limitations)
+> **Current candidate:** v1.0.2 is a debug-signed evaluation build. It is not
+> a stable production release. See [known limitations](#status-and-limitations)
 > before installing.
 
 ## Screenshots
 
-These are fresh captures from the BLU B1660V running the release candidate;
+These are genuine captures from the BLU B1660V running the current candidate;
 screenshots are not mockups.
 
-| Home | Library | Now Playing |
+| Home | Full-width Library | Now Playing |
 | --- | --- | --- |
-| ![Classic home screen](docs/device-evidence/release-v1.0.1/home.png) | ![Library menu](docs/device-evidence/release-v1.0.1/library.png) | ![Now Playing](docs/device-evidence/release-v1.0.1/now-playing.png) |
+| ![Classic home screen](docs/device-evidence/younispin-candidate-home.png) | ![Full-width Library](docs/device-evidence/younispin-candidate-library.png) | ![Now Playing with actual downloaded track](docs/device-evidence/younispin-candidate-now-playing.png) |
+
+| Dismissible MENU | Equalizer | Radio Live |
+| --- | --- | --- |
+| ![Full-width temporary menu](docs/device-evidence/younispin-candidate-menu.png) | ![Full-width Equalizer](docs/device-evidence/younispin-candidate-equalizer.png) | ![Radio Live with Black Rock FM playing](docs/device-evidence/younispin-candidate-radio-second.png) |
+
+The Visualizer capture shows the supplied Simpsons Wave GIF animating while
+radio playback continues; the GIF chooser shows the bundled selections:
+[live GIF Visualizer](docs/device-evidence/younispin-candidate-visualizer-gif.png) ·
+[GIF choices](docs/device-evidence/younispin-candidate-gif-choices.png)
+
+The notification shade screenshot shows the real track cover and playback
+controls: [notification capture](docs/device-evidence/younispin-candidate-notification.png).
 
 ## Highlights
 
@@ -25,13 +37,14 @@ screenshots are not mockups.
 - Local music library, playlists, favorites, folder browsing, and editable
   track metadata.
 - Media3 background playback, system media notification, and lock-screen
-  controls.
+  controls with current artwork, track title, artist, and transport buttons.
 - Radio Browser discovery and curated SomaFM catalogue, with saved/custom
   stations and live station metadata.
 - Optional MusicBrainz metadata search and Cover Art Archive artwork lookup.
   Matches are presented for review; ambiguous recordings/releases are not
   silently selected.
-- Theme and accent customization, equalizer, and visualizer/GIF options.
+- Theme and accent customization, a playback-connected equalizer, and
+  visualizer options with three bundled GIF backgrounds and user GIF imports.
 
 ## Android requirements
 
@@ -44,12 +57,12 @@ screenshots are not mockups.
 
 ## Download and install
 
-Download `YouniSpin-v1.0.1-debug.apk` from the
-[v1.0.1 GitHub Release](https://github.com/TheDeveloperCal/YouniSpin/releases/tag/v1.0.1).
-Verify its SHA-256 against the checksum file attached to that release. This
-debug APK is signed with the standard development signing key and is intended
-for testing. Android may ask you to allow installation from your browser or
-file manager.
+The latest published GitHub release remains
+[v1.0.1](https://github.com/TheDeveloperCal/YouniSpin/releases/tag/v1.0.1).
+The v1.0.2 candidate is not published because production signing is not
+configured. Device verification is documented, but the debug APK is for
+evaluation only. For a source build, follow [Building](docs/BUILDING.md); APK
+details and checksum are in [`docs/TEST_RESULTS.md`](docs/TEST_RESULTS.md).
 
 For ADB installation:
 
@@ -82,10 +95,11 @@ Implementation and test status is tracked in
 [docs/FUNCTIONALITY_MATRIX.md](docs/FUNCTIONALITY_MATRIX.md), and
 [docs/TEST_RESULTS.md](docs/TEST_RESULTS.md).
 
-Known gaps include physical verification of automatic metadata matching on a
-controlled incomplete-tag file, TalkBack testing, and several radio recovery,
-Bluetooth, and manual-station-management edge cases. A feature is not described
-as physically verified unless the test report records device evidence.
+Known gaps include production signing, TalkBack testing, and several radio
+recovery, Bluetooth, and manual-station-management edge cases. The metadata and
+two-station radio paths were verified on-device for this candidate. A feature
+is not described as physically verified unless the test report records device
+evidence.
 
 ## Contributing
 

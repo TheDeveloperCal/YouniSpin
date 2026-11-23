@@ -1,68 +1,85 @@
 # YouniSpin test results
 
-## Release candidate 1.0.1
+## v1.0.2 release candidate
 
-Date: 2026-11-11
+Date: 2026-11-22
 Package: `com.youni.younispin`
-Target: BLU B1660V, Android 15 (API 35)
+Device: BLU B1660V, Android 15/API 35, 720×1600 portrait
+Device ID: omitted from this public report.
 
-### Build and tests
+### Build and static checks
 
-| Check | Result | Detail |
+The final source build completed successfully with:
+
+```bash
+./gradlew testDebugUnitTest lintDebug assembleDebug assembleRelease --no-daemon
+```
+
+| Task | Result | Detail |
 | --- | --- | --- |
-| `testDebugUnitTest` | PASS | Completed successfully with JDK 21. |
-| `assembleDebug` | PASS | Created the APK below from the v1.0.1 source. |
-| `lintDebug` | BLOCKED | Android lint crashed in `MissingClassDetector` with `NoClassDefFoundError: org/jetbrains/kotlin/fir/java/scopes/JavaClassUseSiteMemberScope`. This is a lint tool failure; lint is not reported as passing. |
-| `./gradlew testDebugUnitTest lintDebug assembleDebug --no-daemon` | NOT CLEAN | The requested combined command was attempted; lint failure prevented a successful combined result. Tests and APK assembly passed when run separately. |
+| `testDebugUnitTest` | PASS | Includes focused filename-to-MusicBrainz-query test coverage. |
+| `lintDebug` | PASS | An initial `SuspiciousIndentation` finding in the Orbit Dial drag code was corrected. The subsequent full run passed; only deprecation warnings remained. The earlier Kotlin FIR detector crash did not recur. |
+| `assembleDebug` | PASS | Candidate debug APK built. |
+| `assembleRelease` | PASS | Release variant assembled, but unsigned. |
 
-The lint failure was reproduced with JDK 21, one Gradle worker, and Gradle
-instrumentation disabled. Disabling only the named detector in the module
-configuration did not avoid the crash, so that workaround was removed. No
-Gradle/Kotlin/AGP versions were changed to mask it.
+### APK verification
 
-### APK and installation
+- Version name/code: `1.0.2` / `3`.
+- Debug APK: `app/build/outputs/apk/debug/app-debug.apk`.
+- Debug APK size: `37,358,959` bytes.
+- Debug APK SHA-256: `fb4008c5761fa5cedc0027ad692219df5dd37c5733a23867b4e8351015d5316c`.
+- `apksigner verify` passed for the debug APK (APK Signature Scheme v2).
+- Certificate: Android Debug; this is not a production signing identity.
+- Release APK: `app/build/outputs/apk/release/app-release-unsigned.apk`, `29,174,170` bytes; signature verification fails because it is unsigned.
+- Release APK SHA-256: `1703eb6d3d2385229ba667fd55456b8994c083d18d68d7449896f636641d9d3f`.
+- The candidate has not been published. The existing GitHub release remains
+  v1.0.1; the v1.0.2 debug APK is retained locally for evaluation.
 
-- APK path: `app/build/outputs/apk/debug/app-debug.apk`
-- Version name/code: `1.0.1` / `2`
-- Size: `25,756,458` bytes.
-- SHA-256: `ad75dc780e3241b60e3ff11b5abba2faf1950fd3a4117e4de9b507aab0da579e`
-- Signing: Android debug signing only; not production signed.
-- Installation: `adb install -r` returned `Success`; app data was not cleared.
-- Installed package reported version `1.0.1`, versionCode `2`; the app was
-  force-stopped and relaunched.
-- `dumpsys activity` reported `com.youni.younispin/.MainActivity` as the top
-  resumed activity.
-- Recent logcat contained no `FATAL EXCEPTION` or app-process fatal entry.
+### Installation and device checks
 
-### Device exercise
+The exact candidate debug APK was installed with `adb install -r` over the
+existing app. Android reported `Success`; package inspection showed version
+1.0.2/versionCode 3. No app data was cleared. The app launched and remained
+usable. Candidate captures are saved in `docs/device-evidence/`.
 
-- Opened the classic root screen and selected Library with the center control.
-- Opened All Songs and observed the available local tracks.
-- Started `18 Carat Affair - Death Became Her`; Android MediaSession reported
-  `PLAYING(3)` with advancing position and buffered position.
-- Tapped the Now Playing cloud-download action. It opened Edit Track Metadata
-  and started the online query; the test file returned “No matches found.”
-  No metadata was applied. This verifies the user path and empty-result
-  handling, not successful artist/title/cover identification.
-- Captured fresh screenshots from the installed 1.0.1 APK:
-  - `docs/device-evidence/release-v1.0.1/home.png`
-  - `docs/device-evidence/release-v1.0.1/library.png`
-  - `docs/device-evidence/release-v1.0.1/songs.png`
-  - `docs/device-evidence/release-v1.0.1/now-playing.png`
-  - `docs/device-evidence/release-v1.0.1/metadata-scan.png`
-- The selected track showed `Unknown Artist` and a branded missing-art fallback.
-  Its file lacks usable metadata/art in this test, so this run does not verify
-  that an online scan finds and applies matching metadata or cover art.
-- MediaSession state is evidence that playback was started, not an independent
-  measurement of acoustic output.
-- Joystick repeat gestures, full playback-control regression, notification
-  actions, radio, theme switching, and TalkBack were not retested in this
-  release-candidate pass. See historical results and limitations in
-  `FUNCTIONALITY_MATRIX.md`.
+- Opened MENU, selected Library, confirmed it closed and the Library used the
+  available display width. Reopened MENU from destinations. Playlists, Radio
+  Live, Visualizer, Equalizer, Settings, and Now Playing all opened through
+  the same temporary menu behavior.
+- Android Back closed MENU and returned from Now Playing to the previous
+  destination. Local playback remained active. MENU did not reopen
+  unexpectedly.
+- Center SELECT started the actual downloaded “Death Became Her” track by
+  18 Carat Affair. MediaSession reported `PLAYING(3)` with advancing position.
+- Notification shade showed the actual track artwork, title, artist, and
+  previous/play-pause/next actions.
+- Equalizer displayed five bands across the usable screen width during active
+  playback. Changing a band changed its displayed value; AudioEffect parameter
+  reads/writes appeared in Android logs. Playback remained active. No
+  instrumented acoustic response test was performed.
+- Beat Blender and Black Rock FM each entered LIVE state from the BLU over
+  Wi-Fi. MediaSession reported `PLAYING(3)` and station metadata updated for
+  both. Screenshots: `younispin-candidate-radio.png` and
+  `younispin-candidate-radio-second.png`.
+- Visualizer Studio listed the supplied Simpsons Wave, Monkey Music, and
+  Vaporwave Sunset GIFs. Simpsons Wave was selected and shown animating in the
+  full-screen Visualizer while radio playback continued.
+- MusicBrainz scan on the actual local file logged HTTP 200, `count=1 parsed=1`
+  for `recording:"Death Became Her" AND artist:"18 Carat Affair" AND
+  release:"Televised Tragedies"`. The UI showed a strong exact-title/artist
+  candidate. The release was not resolved unambiguously, and the existing
+  title, artist, and album were already correct, so the suggestion was
+  dismissed without writing unnecessary metadata to the database.
+- Orbit Dial long-press seek and every directional repeat edge were not
+  exhaustively repeated in this candidate run. Historical recordings remain
+  in `docs/device-evidence/`.
+- TalkBack, Bluetooth routing, radio reconnect/failure, and GIF import error
+  cases were not covered in this run.
 
-## Historical verification
+### Release status
 
-Earlier 1.0.0 device sessions tested Orbit Dial navigation/playback controls
-and selected Radio Live paths on the same handset. Their screenshots and
-recordings are retained under `docs/device-evidence/`; they are historical
-evidence, not a substitute for re-testing the full feature set on 1.0.1.
+This artifact is **not a stable production release**. The debug APK uses the
+Android development key and the release APK is unsigned. No production
+keystore or protected signing configuration is available. Do not distribute
+the unsigned release APK as an installable production artifact. The candidate
+has not been pushed or published.

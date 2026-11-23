@@ -67,22 +67,22 @@ fun MetadataEditorScreen(
             isSearchingOnline = true
             searchError = null
             try {
-                val fileTitle = song.path.substringAfterLast('/').substringBeforeLast('.')
-                    .replace(Regex("[_-]+"), " ")
-                    .trim()
-                val queryTitle = title.trim().takeUnless {
-                    it.isBlank() || it.equals("<unknown>", ignoreCase = true) ||
-                        it.equals("Unknown Track", ignoreCase = true)
-                } ?: fileTitle
-                val queryArtist = artist.trim().takeUnless {
-                    it.isBlank() || it.equals("<unknown>", ignoreCase = true) ||
-                        it.equals("Unknown Artist", ignoreCase = true)
+                val query = com.youni.younispin.metadata.MetadataQueryBuilder.fromSongFields(
+                    title = title,
+                    artist = artist,
+                    album = album,
+                    filePath = song.path
+                )
+                if (query.title.isBlank()) {
+                    searchError = "No searchable title found for this file."
+                    return@launch
                 }
-                val queryAlbum = album.trim().takeUnless {
-                    it.isBlank() || it.equals("<unknown>", ignoreCase = true) ||
-                        it.equals("Unknown Album", ignoreCase = true)
-                }
-                val matches = MusicBrainzClient.searchTrack(queryTitle, queryArtist, queryAlbum)
+                val matches = MusicBrainzClient.searchTrack(
+                    title = query.title,
+                    artist = query.artist,
+                    album = query.album,
+                    filePath = song.path
+                )
                 onlineMatches = matches
                 if (matches.isNotEmpty()) {
                     showMatchDialog = true

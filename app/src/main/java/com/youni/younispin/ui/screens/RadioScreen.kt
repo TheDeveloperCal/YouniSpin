@@ -46,6 +46,33 @@ private enum class RadioTab(val label: String) {
     SAVED("Saved")
 }
 
+private val fallbackSomaFmStations = listOf(
+    RadioStation(
+        name = "Groove Salad",
+        url = "https://api.somafm.com/groovesalad256.pls",
+        genre = "Ambient · Downtempo",
+        description = "A nicely chilled plate of ambient/downtempo beats.",
+        homepage = "https://somafm.com/groovesalad/",
+        codec = "MP3",
+        bitrate = 256,
+        source = SomaFmClient.SOURCE_SOMAFM,
+        sourceId = "groovesalad",
+        isCustom = false
+    ),
+    RadioStation(
+        name = "Drone Zone",
+        url = "https://api.somafm.com/dronezone256.pls",
+        genre = "Ambient · Space",
+        description = "Serving ambient and space music for comfortable flying.",
+        homepage = "https://somafm.com/dronezone/",
+        codec = "MP3",
+        bitrate = 256,
+        source = SomaFmClient.SOURCE_SOMAFM,
+        sourceId = "dronezone",
+        isCustom = false
+    )
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RadioScreen(
@@ -146,7 +173,8 @@ fun RadioScreen(
                     } catch (cancelled: CancellationException) {
                         throw cancelled
                     } catch (failure: Exception) {
-                        loadError = failure.localizedMessage ?: "SomaFM catalogue is unavailable"
+                        somaStations = fallbackSomaFmStations
+                        loadError = "Showing two saved SomaFM stations. Connect to the internet to listen."
                     } finally {
                         isLoading = false
                     }

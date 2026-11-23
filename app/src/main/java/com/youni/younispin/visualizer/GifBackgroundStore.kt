@@ -12,7 +12,7 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
-import java.io.ByteArrayOutputStream
+import java.io.FileOutputStream
 import java.util.UUID
 
 data class ImportedGif(
@@ -33,62 +33,95 @@ class GifBackgroundStore(private val context: Context) {
     private val _items = MutableStateFlow(loadIndex())
     val items: StateFlow<List<ImportedGif>> = _items.asStateFlow()
 
+    /** Copies the bundled starter backgrounds once without disturbing user imports. */
+    suspend fun seedBundledDefaults() = withContext(Dispatchers.IO) {
+        val preferences = context.getSharedPreferences("younispin_gif_defaults", Context.MODE_PRIVATE)
+        if (preferences.getBoolean("seeded", false)) return@withContext
+        val defaults = listOf(
+            "simp-simpsons-wave.gif" to "Simpsons Wave",
+            "monkey-music.gif" to "Monkey Music",
+            "vaporwave-sunset.gif" to "Vaporwave Sunset"
+        )
+        val next = _items.value.toMutableList()
+        defaults.forEach { (assetName, displayName) ->
+            val id = UUID.nameUUIDFromBytes(assetName.toByteArray(Charsets.UTF_8)).toString()
+            if (next.none { it.id == id }) {
+                val destination = File(dir(context), "$id.gif")
+                context.assets.open("default_gifs/$assetName").use { input ->
+                    destination.outputStream().use { output -> input.copyTo(output) }
+                }
+                val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                BitmapFactory.decodeFile(destination.absolutePath, bounds)
+                next += ImportedGif(
+                    id = id,
+                    fileName = destination.name,
+                    displayName = displayName,
+                    byteSize = destination.length(),
+                    width = bounds.outWidth,
+                    height = bounds.outHeight,
+                    favorite = false
+                )
+            }
+        }
+        persist(next)
+        _items.value = next
+        preferences.edit().putBoolean("seeded", true).apply()
+    }
+
     suspend fun importFromUri(uri: Uri, displayNameHint: String? = null): Result<ImportedGif> =
         withContext(Dispatchers.IO) {
             try {
                 val cr = context.contentResolver
-                try {
-                    cr.takePersistableUriPermission(uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                } catch (_: SecurityException) {
-                    // Copying into app storage is the durable path.
-                }
                 val mime = cr.getType(uri).orEmpty()
                 if (mime.isNotBlank() && mime != "image/gif" && !mime.contains("gif")) {
                     return@withContext Result.failure(IllegalArgumentException("Please choose a GIF image."))
                 }
-                cr.openInputStream(uri)?.use { input ->
-                    val output = ByteArrayOutputStream()
-                    val buffer = ByteArray(16 * 1024)
-                    var total = 0
-                    while (true) {
-                        val read = input.read(buffer)
-                        if (read < 0) break
-                        total += read
-                        if (total > MAX_BYTES) {
-                            return@withContext Result.failure(
-                                IllegalArgumentException("GIF is too large. Choose a file under 12 MB.")
-                            )
+                val id = UUID.randomUUID().toString()
+                val temporaryFile = File(dir(context), "$id.tmp")
+                val fileName = "$id.gif"
+                val finalFile = File(dir(context), fileName)
+                try {
+                    val input = cr.openInputStream(uri)
+                        ?: throw IllegalArgumentException("Could not open the selected GIF.")
+                    var total = 0L
+                    input.use { source ->
+                        FileOutputStream(temporaryFile).use { destination ->
+                            val buffer = ByteArray(16 * 1024)
+                            while (true) {
+                                val read = source.read(buffer)
+                                if (read < 0) break
+                                total += read
+                                if (total > MAX_BYTES) {
+                                    throw IllegalArgumentException("GIF is too large. Choose a file under 12 MB.")
+                                }
+                                destination.write(buffer, 0, read)
+                            }
                         }
-                        output.write(buffer, 0, read)
                     }
-                    val bytes = output.toByteArray()
-                    if (bytes.size < 16 || !isGifHeader(bytes)) {
-                        return@withContext Result.failure(IllegalArgumentException("That file is not a valid GIF."))
+                    val header = ByteArray(6)
+                    val validHeader = temporaryFile.inputStream().use { it.read(header) == header.size } &&
+                        isGifHeader(header)
+                    if (total < 16 || !validHeader) {
+                        throw IllegalArgumentException("That file is not a valid GIF.")
                     }
                     val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                    BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+                    BitmapFactory.decodeFile(temporaryFile.absolutePath, bounds)
                     val w = bounds.outWidth
                     val h = bounds.outHeight
-                    var warning: String? = null
-                    if (w > 800 || h > 800 || bytes.size > 4 * 1024 * 1024) {
-                        warning = "Large animation — it will be downsampled to protect memory on this device."
-                    }
-                    val id = UUID.randomUUID().toString()
-                    val fileName = "$id.gif"
-                    val finalFile = File(dir(context), fileName)
-                    val temporaryFile = File(dir(context), "$fileName.tmp")
-                    temporaryFile.writeBytes(bytes)
+                    if (w <= 0 || h <= 0) throw IllegalArgumentException("That file is not a valid GIF.")
+                    val warning = if (w > 800 || h > 800 || total > 4 * 1024 * 1024) {
+                        "Large animation — it will be downsampled to protect memory on this device."
+                    } else null
                     if (!temporaryFile.renameTo(finalFile)) {
-                        temporaryFile.delete()
-                        return@withContext Result.failure(IllegalStateException("Could not save the selected GIF."))
+                        throw IllegalStateException("Could not save the selected GIF.")
                     }
                     val item = ImportedGif(
                         id = id,
                         fileName = fileName,
                         displayName = displayNameHint?.ifBlank { null } ?: "GIF ${items.value.size + 1}",
-                        byteSize = bytes.size.toLong(),
-                        width = w.coerceAtLeast(0),
-                        height = h.coerceAtLeast(0),
+                        byteSize = total,
+                        width = w,
+                        height = h,
                         favorite = false,
                         warning = warning
                     )
@@ -96,7 +129,9 @@ class GifBackgroundStore(private val context: Context) {
                     persist(next)
                     _items.value = next
                     Result.success(item)
-                } ?: Result.failure(IllegalArgumentException("Could not open the selected GIF."))
+                } finally {
+                    temporaryFile.delete()
+                }
             } catch (e: OutOfMemoryError) {
                 Result.failure(IllegalStateException("Not enough memory to import this GIF."))
             } catch (e: Exception) {

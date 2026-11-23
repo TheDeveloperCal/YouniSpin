@@ -21,7 +21,8 @@ import com.youni.younispin.ui.theme.YouniTheme
 @Composable
 fun EqualizerScreen(
     equalizerManager: EqualizerManager,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    embedded: Boolean = false
 ) {
     val colors = YouniTheme.colors
 
@@ -38,7 +39,7 @@ fun EqualizerScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(colors.surface)
-                    .statusBarsPadding()
+                    .then(if (embedded) Modifier else Modifier.statusBarsPadding())
                     .padding(horizontal = 8.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {

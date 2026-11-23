@@ -10,6 +10,7 @@ import com.youni.younispin.data.db.*
 import com.youni.younispin.data.model.*
 import com.youni.younispin.metadata.ArtworkManager
 import com.youni.younispin.metadata.MetadataMatchResolver
+import com.youni.younispin.metadata.MetadataQueryBuilder
 import com.youni.younispin.metadata.MusicBrainzClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CancellationException
@@ -218,15 +219,9 @@ class MusicRepository(
     }
 
     private fun isMetadataLookupCandidate(song: Song): Boolean {
-        val title = song.title.trim()
-        val artist = song.artist.trim()
-        val hasSearchableTitle = title.isNotEmpty() &&
-            !title.equals("Unknown Track", ignoreCase = true) &&
-            !title.equals("<unknown>", ignoreCase = true)
-        val hasSearchableArtist = artist.isNotEmpty() &&
-            !artist.equals("Unknown Artist", ignoreCase = true) &&
-            !artist.equals("<unknown>", ignoreCase = true)
-        return isMetadataMissing(song) && hasSearchableTitle && hasSearchableArtist && song.path.isNotBlank()
+        if (!isMetadataMissing(song) || song.path.isBlank()) return false
+        val query = MetadataQueryBuilder.fromSongFields(song.title, song.artist, song.album, song.path)
+        return query.title.isNotBlank() && !query.artist.isNullOrBlank()
     }
 
     suspend fun autoResolveMetadata(song: Song): Boolean = withContext(Dispatchers.IO) {
@@ -234,16 +229,22 @@ class MusicRepository(
         if (!isMetadataMissing(song)) return@withContext false
         if (!isMetadataLookupCandidate(song)) return@withContext false
 
-        val matches = MusicBrainzClient.searchTrack(song.title, song.artist, song.album)
+        val query = MetadataQueryBuilder.fromSongFields(song.title, song.artist, song.album, song.path)
+        val matches = MusicBrainzClient.searchTrack(
+            title = query.title,
+            artist = query.artist,
+            album = query.album,
+            filePath = song.path
+        )
         val candidate = MetadataMatchResolver.chooseBestMatch(
-            title = song.title,
-            artist = song.artist,
-            album = song.album,
+            title = query.title,
+            artist = query.artist,
+            album = query.album,
             durationMs = song.duration,
             candidates = matches
         ) ?: return@withContext false
 
-        if (!MetadataMatchResolver.canAutoApply(song.title, song.artist, song.album, candidate)) {
+        if (!MetadataMatchResolver.canAutoApply(query.title, query.artist ?: "", query.album ?: "", candidate)) {
             return@withContext false
         }
 

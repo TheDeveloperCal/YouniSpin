@@ -76,6 +76,10 @@ fun VisualizerStudioScreen(
     var tab by remember { mutableStateOf(StudioTab.VISUALIZERS) }
     val selectedGif = gifStore.find(settings.selectedGifId)
 
+    LaunchedEffect(gifStore) {
+        gifStore.seedBundledDefaults()
+    }
+
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         if (uri == null) return@rememberLauncherForActivityResult
         scope.launch {

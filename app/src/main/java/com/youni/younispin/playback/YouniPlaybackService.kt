@@ -5,12 +5,17 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.annotation.OptIn
 import androidx.core.app.NotificationCompat
 import androidx.media.app.NotificationCompat.MediaStyle
+import androidx.media.session.MediaButtonReceiver
+import android.support.v4.media.session.PlaybackStateCompat
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -36,7 +41,7 @@ class YouniPlaybackService : MediaSessionService() {
         super.onCreate()
         createNotificationChannel()
 
-        equalizerManager = EqualizerManager(this)
+        equalizerManager = EqualizerManager.getInstance(this)
 
         val audioAttributes = AudioAttributes.Builder()
             .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
@@ -49,6 +54,18 @@ class YouniPlaybackService : MediaSessionService() {
             .build()
 
         player.addListener(object : Player.Listener {
+            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                refreshNowPlayingNotification()
+            }
+
+            override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) {
+                refreshNowPlayingNotification()
+            }
+
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                refreshNowPlayingNotification()
+            }
+
             override fun onPlaybackStateChanged(playbackState: Int) {
                 if (playbackState == Player.STATE_READY) {
                     equalizerManager.attachAudioSession(player.audioSessionId)
@@ -107,19 +124,52 @@ class YouniPlaybackService : MediaSessionService() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
+        val artwork = player.currentMediaItem?.mediaMetadata?.artworkUri?.let(::loadArtwork)
+        val previous = MediaButtonReceiver.buildMediaButtonPendingIntent(
+            this, PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS
+        )
+        val playPause = MediaButtonReceiver.buildMediaButtonPendingIntent(
+            this, PlaybackStateCompat.ACTION_PLAY_PAUSE
+        )
+        val next = MediaButtonReceiver.buildMediaButtonPendingIntent(
+            this, PlaybackStateCompat.ACTION_SKIP_TO_NEXT
+        )
+
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(title)
             .setContentText(subtitle)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentIntent(pendingIntent)
+            .setLargeIcon(artwork)
+            .addAction(android.R.drawable.ic_media_previous, "Previous", previous)
+            .addAction(
+                if (player.isPlaying) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play,
+                if (player.isPlaying) "Pause" else "Play",
+                playPause
+            )
+            .addAction(android.R.drawable.ic_media_next, "Next", next)
             .setOnlyAlertOnce(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
-            .setStyle(MediaStyle().setMediaSession(session.sessionCompatToken))
+            .setStyle(
+                MediaStyle()
+                    .setMediaSession(session.sessionCompatToken)
+                    .setShowActionsInCompactView(0, 1, 2)
+            )
             .build()
 
         startForeground(1001, notification)
     }
+
+    private fun loadArtwork(uri: Uri): Bitmap? = runCatching {
+        when (uri.scheme) {
+            "file" -> BitmapFactory.decodeFile(uri.path)
+            "content", "android.resource" -> contentResolver.openInputStream(uri)?.use {
+                BitmapFactory.decodeStream(it)
+            }
+            else -> null
+        }
+    }.getOrNull()
 
     private fun publishAudioSession() {
         val extras = Bundle().apply {

@@ -57,46 +57,69 @@ object MusicBrainzClient {
     suspend fun searchTrack(
         title: String,
         artist: String?,
-        album: String? = null
+        album: String? = null,
+        filePath: String? = null
     ): List<MetadataMatch> = withContext(Dispatchers.IO) {
+        val query = MetadataQueryBuilder.fromSongFields(title, artist, album, filePath)
+        if (query.title.isBlank()) {
+            Log.i(TAG, "Skipping MusicBrainz search: empty title")
+            return@withContext emptyList()
+        }
+
+        val attempts = buildList {
+            add(MetadataQueryBuilder.luceneQuery(query, quoted = true, includeAlbum = query.album != null))
+            if (query.album != null) {
+                add(MetadataQueryBuilder.luceneQuery(query, quoted = true, includeAlbum = false))
+            }
+            add(MetadataQueryBuilder.luceneQuery(query, quoted = false, includeAlbum = false))
+        }.distinct()
+
+        var lastError: Exception? = null
+        for ((index, lucene) in attempts.withIndex()) {
+            try {
+                val matches = executeSearch(lucene, query.album)
+                Log.i(
+                    TAG,
+                    "MusicBrainz attempt ${index + 1}/${attempts.size} source=${query.source} " +
+                        "query=[$lucene] results=${matches.size}"
+                )
+                if (matches.isNotEmpty()) return@withContext matches
+            } catch (e: Exception) {
+                lastError = e
+                Log.e(TAG, "MusicBrainz attempt ${index + 1} failed for [$lucene]: ${e.message}")
+            }
+        }
+        if (lastError != null) throw lastError
+        emptyList()
+    }
+
+    private suspend fun executeSearch(lucene: String, albumHint: String?): List<MetadataMatch> {
         val results = mutableListOf<MetadataMatch>()
-        if (title.isBlank()) return@withContext results
+        enforceRateLimit()
 
-        try {
-            enforceRateLimit()
+        val encodedQuery = URLEncoder.encode(lucene, "UTF-8")
+        val url = "https://musicbrainz.org/ws/2/recording?query=$encodedQuery&limit=10&fmt=json"
+        val request = Request.Builder()
+            .url(url)
+            .header("User-Agent", USER_AGENT)
+            .header("Accept", "application/json")
+            .build()
 
-            val queryBuilder = StringBuilder()
-            val cleanTitle = title.replace(Regex("[^a-zA-Z0-9 ]"), " ").trim()
-            queryBuilder.append("recording:\"").append(cleanTitle).append("\"")
-
-            if (!artist.isNullOrBlank() && artist != "Unknown Artist") {
-                val cleanArtist = artist.replace(Regex("[^a-zA-Z0-9 ]"), " ").trim()
-                queryBuilder.append(" AND artist:\"").append(cleanArtist).append("\"")
-            }
-
-            if (!album.isNullOrBlank() && album != "Unknown Album") {
-                val cleanAlbum = album.replace(Regex("[^a-zA-Z0-9 ]"), " ").trim()
-                queryBuilder.append(" AND release:\"").append(cleanAlbum).append("\"")
-            }
-
-            val encodedQuery = URLEncoder.encode(queryBuilder.toString(), "UTF-8")
-            val url = "https://musicbrainz.org/ws/2/recording?query=$encodedQuery&limit=10&fmt=json"
-
-            val request = Request.Builder()
-                .url(url)
-                .header("User-Agent", USER_AGENT)
-                .header("Accept", "application/json")
-                .build()
-
-            val response = client.newCall(request).execute()
+        client.newCall(request).execute().use { response ->
+            val body = response.body?.string().orEmpty()
             if (!response.isSuccessful) {
-                Log.w(TAG, "MusicBrainz API returned ${response.code}")
-                return@withContext results
+                Log.w(TAG, "MusicBrainz HTTP ${response.code} for $url body=${body.take(180)}")
+                throw IllegalStateException("MusicBrainz returned HTTP ${response.code}")
             }
 
-            val body = response.body?.string() ?: return@withContext results
             val json = JSONObject(body)
-            val recordings = json.optJSONArray("recordings") ?: return@withContext results
+            val recordings = json.optJSONArray("recordings")
+            Log.i(
+                TAG,
+                "MusicBrainz HTTP ${response.code} count=${json.optInt("count", 0)} " +
+                    "parsed=${recordings?.length() ?: 0}"
+            )
+            if (recordings == null) return emptyList()
 
             for (i in 0 until recordings.length()) {
                 val rec = recordings.getJSONObject(i)
@@ -104,14 +127,12 @@ object MusicBrainzClient {
                 val recTitle = rec.optString("title")
                 val score = rec.optInt("score", 50)
 
-                // Artist credit
                 var recArtist = "Unknown Artist"
                 val artistCredit = rec.optJSONArray("artist-credit")
                 if (artistCredit != null && artistCredit.length() > 0) {
                     recArtist = artistCredit.getJSONObject(0).optString("name", "Unknown Artist")
                 }
 
-                // A recording may appear on many releases; only expose a release when unambiguous.
                 var releaseTitle: String? = null
                 var releaseId: String? = null
                 var releaseDate: String? = null
@@ -120,8 +141,8 @@ object MusicBrainzClient {
                 val releases = rec.optJSONArray("releases")
                 if (releases != null && releases.length() > 0) {
                     val releaseObjects = (0 until releases.length()).map { releases.getJSONObject(it) }
-                    val selectedRelease = if (!album.isNullOrBlank() && album != "Unknown Album") {
-                        val normalizedAlbum = normalizeForComparison(album)
+                    val selectedRelease = if (!albumHint.isNullOrBlank() && albumHint != "Unknown Album") {
+                        val normalizedAlbum = normalizeForComparison(albumHint)
                         releaseObjects.filter {
                             normalizeForComparison(it.optString("title")) == normalizedAlbum
                         }.singleOrNull()
@@ -160,24 +181,21 @@ object MusicBrainzClient {
                     )
                 )
             }
-
-            val topScore = results.maxOfOrNull { it.score }
-            val similarlyScoredCount = results.count { topScore != null && it.score >= topScore - 5 }
-            for (index in results.indices) {
-                val match = results[index]
-                val confidence = when {
-                    match.score >= 90 && similarlyScoredCount == 1 -> MatchConfidence.STRONG_MATCH
-                    match.score >= 75 && similarlyScoredCount == 1 -> MatchConfidence.POSSIBLE_MATCH
-                    match.score >= 75 && similarlyScoredCount > 1 -> MatchConfidence.MULTIPLE_MATCHES
-                    else -> MatchConfidence.LOW_MATCH
-                }
-                results[index] = match.copy(confidence = confidence)
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Search error: ${e.message}")
         }
 
-        return@withContext results
+        val topScore = results.maxOfOrNull { it.score }
+        val similarlyScoredCount = results.count { topScore != null && it.score >= topScore - 5 }
+        for (index in results.indices) {
+            val match = results[index]
+            val confidence = when {
+                match.score >= 90 && similarlyScoredCount == 1 -> MatchConfidence.STRONG_MATCH
+                match.score >= 75 && similarlyScoredCount == 1 -> MatchConfidence.POSSIBLE_MATCH
+                match.score >= 75 && similarlyScoredCount > 1 -> MatchConfidence.MULTIPLE_MATCHES
+                else -> MatchConfidence.LOW_MATCH
+            }
+            results[index] = match.copy(confidence = confidence)
+        }
+        return results
     }
 
     suspend fun downloadArtwork(coverUrl: String): ByteArray? = withContext(Dispatchers.IO) {
