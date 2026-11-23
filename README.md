@@ -6,9 +6,9 @@ layout, a tactile Orbit Dial, background playback, and Internet radio. It is
 designed to keep everyday music controls focused and familiar while using
 Android's native media and accessibility facilities.
 
-> **Current candidate:** v1.0.2 is a debug-signed evaluation build. It is not
-> a stable production release. See [known limitations](#status-and-limitations)
-> before installing.
+> **Current candidate:** v1.0.3 (versionCode 4) is locally production-signed
+> and undergoing isolated release validation. It is not published yet; see
+> [known limitations](#status-and-limitations).
 
 ## Screenshots
 
@@ -59,11 +59,9 @@ controls: [notification capture](docs/device-evidence/younispin-candidate-notifi
 ## Download and install
 
 There is currently **no published GitHub release or downloadable APK**. The
-v1.0.2 build is a debug-signed evaluation candidate; it is not a stable
-production release. See [Installation](docs/INSTALLATION.md) for the safe
-source-build path and signing limitations. The next production version should
-be v1.0.3 (versionCode 4): local history contains the v1.0.1 tag and the
-v1.0.2 evaluation candidate (versionCode 3).
+v1.0.3 production-signed candidate is undergoing release validation and will
+only be published after all required checks pass. See
+[Installation](docs/INSTALLATION.md) for current signing and validation status.
 
 ## Build from source
 
@@ -84,11 +82,13 @@ Implementation and test status is tracked in
 [docs/FUNCTIONALITY_MATRIX.md](docs/FUNCTIONALITY_MATRIX.md), and
 [docs/TEST_RESULTS.md](docs/TEST_RESULTS.md).
 
-Known gaps include production signing, TalkBack testing, and several radio
-recovery, Bluetooth, and manual-station-management edge cases. The metadata and
-two-station radio paths were verified on-device for this candidate. A feature
-is not described as physically verified unless the test report records device
-evidence.
+The v1.0.3 production-signed APK has passed automated unit tests and debug and
+release lint checks, but its isolated installation and launch have not been
+verified. No AVD or cached emulator image was available, and the BLU installation
+is being preserved. Other known gaps include TalkBack testing and several
+radio recovery, Bluetooth, and manual-station-management edge cases. Earlier
+v1.0.2 metadata and two-station radio checks were verified on the BLU; see the
+[test report](docs/TEST_RESULTS.md) for details.
 
 ## Contributing
 

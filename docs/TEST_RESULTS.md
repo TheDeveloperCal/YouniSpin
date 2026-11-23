@@ -1,6 +1,6 @@
 # YouniSpin test results
 
-## v1.0.2 release candidate
+## v1.0.2 release candidate (historical)
 
 Date: 2026-11-22
 Package: `com.youni.younispin`
@@ -76,7 +76,7 @@ usable. Candidate captures are saved in `docs/device-evidence/`.
 - TalkBack, Bluetooth routing, radio reconnect/failure, and GIF import error
   cases were not covered in this run.
 
-### Release status
+### Historical release status
 
 This artifact is **not a stable production release**. The debug APK uses the
 Android development key and the release APK is unsigned. No production
@@ -84,3 +84,55 @@ keystore or protected signing configuration is available. Do not distribute
 the unsigned release APK as an installable production artifact. The candidate
 has not been published. Source publication status is tracked in the repository
 history; no APK asset is attached to a GitHub release.
+
+## v1.0.3 production candidate
+
+Date: 2026-11-23
+Package: `com.youni.younispin`
+Version name/code: `1.0.3` / `4`
+APK: `app/build/outputs/apk/release/app-release.apk`
+
+### Build, static checks, and artifact verification
+
+The release build completed with:
+
+```bash
+./gradlew testDebugUnitTest lintDebug lintRelease assembleDebug assembleRelease --no-daemon
+```
+
+| Check | Result | Detail |
+| --- | --- | --- |
+| `testDebugUnitTest` | PASS | All available debug unit tests passed. |
+| `lintDebug` | PASS | Debug lint completed successfully. |
+| `lintRelease` | PASS | Release lint completed successfully. |
+| `assembleDebug` | PASS | Debug variant assembled; it is not the release artifact. |
+| `assembleRelease` | PASS | Production-signed release APK assembled. |
+| `apksigner verify --verbose` | PASS | APK Signature Scheme v2 verification passed. |
+| Package/version inspection | PASS | `com.youni.younispin`, version `1.0.3`, versionCode `4`. |
+
+- Production certificate SHA-256: `01629234a703172a6c3e74d6731b2161a4543810cefb60281cebf777331969ee`.
+- APK size: 29,186,458 bytes.
+- APK SHA-256: `0216271139e673206b23bab4afe3770b9c3983d90e7a14b6549434deca7ac66d`.
+- The local keystore and signing properties are outside the repository and
+  have owner-only permissions. Neither is included in the candidate changes.
+
+### Isolated installation and launch
+
+**NOT RUN — environment unavailable.** No Android Virtual Device is configured
+and no usable emulator system image is cached. The only connected Android
+device is the BLU B1660V, which was deliberately not used because it contains
+the existing debug-signed installation and user data. Installing this
+production-signed APK there could not update that app safely. A single attempt
+to fetch the 1.68 GB Android 35 Google Play emulator image stalled; no repeated
+download attempts were made. Installation, launch, and runtime behavior of the
+v1.0.3 APK are therefore not confirmed.
+
+### Publication status
+
+The APK is a production-signed candidate, but it has not been installed and
+launched in isolation. GitHub currently has no releases or tags for this
+repository; `main` is at `1b23035d57d63bab8fd26ef9298d875ec76ab327`.
+GitHub’s public API and Git transport are reachable, but the local GitHub CLI
+credential is invalid. No v1.0.3 tag, release, or uploaded APK asset has been
+created. Do not publish until the maintainer explicitly approves publication
+with the isolated-test limitation documented, or isolated testing is completed.

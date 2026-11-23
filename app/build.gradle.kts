@@ -1,8 +1,43 @@
+import java.io.File
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.devtools.ksp")
+}
+
+val signingPropertiesFile = File(
+    System.getenv("YOUNISPIN_SIGNING_PROPERTIES")
+        ?.takeIf(String::isNotBlank)
+        ?: "${System.getProperty("user.home")}/.config/younispin/signing.properties"
+)
+val signingProperties = Properties().apply {
+    if (signingPropertiesFile.isFile) {
+        signingPropertiesFile.inputStream().use(::load)
+    }
+}
+val releaseStoreFile = signingProperties.getProperty("storeFile")
+val releaseKeyAlias = signingProperties.getProperty("keyAlias")
+val releaseStorePassword = signingProperties.getProperty("storePassword")
+val releaseKeyPassword = signingProperties.getProperty("keyPassword")
+val releaseSigningReady = listOf(
+    releaseStoreFile,
+    releaseKeyAlias,
+    releaseStorePassword,
+    releaseKeyPassword
+).all { !it.isNullOrBlank() } && File(releaseStoreFile.orEmpty()).isFile
+
+val verifyReleaseSigning = tasks.register("verifyReleaseSigning") {
+    doLast {
+        if (!releaseSigningReady) {
+            throw GradleException(
+                "Release tasks require local signing properties at ${signingPropertiesFile.path}. " +
+                    "Set YOUNISPIN_SIGNING_PROPERTIES to a protected properties file."
+            )
+        }
+    }
 }
 
 android {
@@ -13,14 +48,26 @@ android {
         applicationId = "com.youni.younispin"
         minSdk = 26
         targetSdk = 35
-        versionCode = 3
-        versionName = "1.0.2"
+        versionCode = 4
+        versionName = "1.0.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("production") {
+            if (releaseSigningReady) {
+                storeFile = File(releaseStoreFile!!)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
+            signingConfig = signingConfigs.getByName("production")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -54,6 +101,12 @@ android {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
+    }
+}
+
+tasks.configureEach {
+    if (name == "packageRelease" || name == "bundleRelease") {
+        dependsOn(verifyReleaseSigning)
     }
 }
 

@@ -31,5 +31,9 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 adb shell monkey -p com.youni.younispin 1
 ```
 
-The build is debug-signed. No production signing configuration or credentials
-are committed.
+Debug builds use Android's development key. Release builds use the protected
+local properties file at
+`~/.config/younispin/signing.properties` (or the path in
+`YOUNISPIN_SIGNING_PROPERTIES`) and the keystore referenced by that file. The
+release task fails if signing material is missing. The keystore and passwords
+are not in Git; never copy them into this repository or share them in chat.

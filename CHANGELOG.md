@@ -5,6 +5,14 @@ candidate preparation and do not imply that every listed subsystem has
 completed independent physical-device verification; see the linked test
 reports.
 
+## 1.0.3 — 2026-11-23 (production candidate; not published)
+
+- Carries forward the v1.0.2 navigation, playback notification, equalizer,
+  radio, GIF visualizer, and metadata-scanning work.
+- Advances versionCode from 3 to 4 and configures a dedicated local production
+  signing identity. Release publication remains gated on emulator install,
+  launch, and final release checks.
+
 ## 1.0.2 — 2026-11-22 (evaluation prerelease; not a stable release)
 
 - Navigation now opens as a temporary, full-width menu overlay on destinations;

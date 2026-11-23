@@ -3,27 +3,34 @@
 ## Published APK availability
 
 There is currently no published GitHub release or downloadable APK. The
-v1.0.2 APK is a local debug-signed evaluation build, not a production release.
-Do not install an APK signed with a different key over an existing build if
-you need to preserve its app data.
+v1.0.3 candidate is locally production-signed and must complete isolated
+emulator validation before publication. Do not install it over the existing
+BLU app: that installation uses the Android debug key, and changing signing
+identity would be rejected by Android.
 
-## v1.0.2 evaluation build
+## v1.0.3 production candidate
 
-The v1.0.2 candidate is debug-signed. Its local music, notification, metadata
+The v1.0.3 candidate uses the local production key. Its package is
+`com.youni.younispin`, version `1.0.3` (versionCode `4`). Install it only on a
+separate emulator or test device until its validation is complete. The BLU
+installation and its app data are intentionally left untouched.
+
+The earlier v1.0.2 debug candidate's local music, notification, metadata
 lookup, radio playback, navigation, and GIF visualizer paths were verified on
-the BLU; see [`TEST_RESULTS.md`](TEST_RESULTS.md). Build it from source with
-the commands in [`BUILDING.md`](BUILDING.md). To install the generated debug
-APK over an installation signed with the matching debug key:
+the BLU; see [`TEST_RESULTS.md`](TEST_RESULTS.md).
+
+The v1.0.3 isolated install and launch check has not been completed because
+there is no configured emulator or cached system image. See
+[`TEST_RESULTS.md`](TEST_RESULTS.md) for the exact status. Do not install this
+candidate on the BLU B1660V.
 
 ```bash
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 adb shell monkey -p com.youni.younispin 1
 ```
 
-The `-r` option updates the installed app while preserving its data when the
-signing key matches. If Android rejects an update because the APK signing key
-differs, do not uninstall if preserving app data is important; export or back
-up playlists/settings first.
+Do not install the production-signed candidate over the debug-signed BLU app.
+Do not uninstall that app or clear its data.
 
 ## Permissions
 
@@ -34,7 +41,8 @@ starts; the app can still browse local music without those network services.
 
 ## Production signing
 
-This repository does not contain a production keystore or signing credentials.
-The release variant currently assembles unsigned. A maintainer must provision
-and securely back up a private release key, configure protected signing, and
-verify update/install behavior before publishing a production build.
+The production keystore and signing properties are stored outside this
+repository under `~/.config/younispin/`, with owner-only permissions.
+They are excluded from Git and must never be uploaded. Back up the keystore
+and signing properties together to encrypted storage accessible only to the
+maintainer. Never regenerate this key for an update.
